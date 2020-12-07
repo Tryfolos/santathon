@@ -5,31 +5,53 @@ import sys
 #Initializing pygame.
 pygame.init()
 
+
 #Variables.
+	#This is a simple variable that describes in what state the game is currently in. It is nothing more than an organizer.
 game_location = "main_menu"
+
+	#These variables determine if it is time to fade away the main menu yet.
 fade = False
 fade2 = False
+
+	#These are the variables that sets the alpha value of the text in the main menu.
 menu_small_alpha = 255
 menu_alpha = 255
 
+	#This is your in game score.
+score = 0
+
+	#Keyboard inputs.
 input_long_space = False
 input_short_space = False
 
+	#The resolutions of the "internal" and "external" surfaces. (The game always renders at 4k and then downscales it or upscales it to whatever resolution you want to see.)
+	#Yes, this does cause lower performance but it is a very easy way to make the game compatible with any resolution as long as it is 16:9 aspect ratio.
+	#There are probably better ways to do this but this works well for now.
 camera_resolution = [3840, 2160]
-window_resolution = [1920,1080]
+window_resolution = [1920, 1080]
 
 #Creating the two main surfaces.
 camera = pygame.Surface(camera_resolution)
 window = pygame.display.set_mode(window_resolution)
+
 
 #Loading font "ebrima.ttf" in different sizes. 
 ebrima_main_menu = pygame.font.Font("ebrima.ttf", 256)
 ebrima_main_menu_small = pygame.font.Font("ebrima.ttf", 86) 
 title_cords = [1280, 500]
 
+
 #Creating surfaces from fonts.
 game_title = ebrima_main_menu.render("Santathon", True, (0, 0, 0)).convert_alpha()
 game_title_small = ebrima_main_menu_small.render("Press The Spacebar", True, (0, 0, 0)).convert_alpha()
+
+
+#Setting up player assets and stuff.
+#           (Santa Claus)
+
+
+
 
 
 #Function for quitting the game.
@@ -46,11 +68,15 @@ clock = pygame.time.Clock()
 while True:
 
 #Checking time spent between frames.
-	delta = clock.tick(500)
+	delta = clock.tick(80)
 
 
 #Setting the window caption. There are 40 spaces between game title and framerate numbers.
 	pygame.display.set_caption(f"Santathon                                        Framerate: {int(clock.get_fps())}                                        Delta Time: {delta}")
+
+#Setting the window icon.
+	icon = pygame.image.load("santa_icon.png").convert_alpha()
+	pygame.display.set_icon(icon)
 
 
 
@@ -71,14 +97,13 @@ while True:
 				input_long_space = False
 
 
-
 #Main menu logic.
 	if game_location == "main_menu":
 
 	#This is what happens when the fade has begun.
 		if fade == True:
-			title_cords[1] += 0.06 * (700 - title_cords[1])
-			menu_small_alpha -= 12
+			title_cords[1] += 0.1 * (700 - title_cords[1])
+			menu_small_alpha -= 16
 			game_title_small.set_alpha(menu_small_alpha)
 		if (700 - title_cords[1]) < 1:
 			fade = False
@@ -91,7 +116,7 @@ while True:
 
 	#The second phase concists of the game title fading away as the alpha value gets lower.
 		if fade2 == True:
-			menu_alpha -= 8
+			menu_alpha -= 12
 			game_title.set_alpha(menu_alpha)
 
 
