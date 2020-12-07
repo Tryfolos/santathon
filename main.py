@@ -148,11 +148,11 @@ while True:
 					santa_speed = -100
 
 	#Adding downwards momentum each frame.
-		santa_speed += 8
+		santa_speed += 6
 
 	#Limiting the vertical speed of santa.
-		if santa_speed > 48:
-			santa_speed = 48
+		if santa_speed > 50:
+			santa_speed = 50
 
 	#Moving santa vertically based on his speed.
 		santa_cords[1] += santa_speed
