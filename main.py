@@ -29,7 +29,17 @@ input_short_space = False
 	#Yes, this does cause lower performance but it is a very easy way to make the game compatible with any resolution as long as it is 16:9 aspect ratio.
 	#There are probably better ways to do this but this works well for now.
 camera_resolution = [3840, 2160]
-window_resolution = [1920, 1080]
+window_resolution = [1600, 900]
+
+	#Player cordinates.
+santa_cords = [300, 1200]
+	
+	#The speed of santa claus.
+santa_speed = 0
+
+
+	#Determines if the player is alive.
+alive = True
 
 #Creating the two main surfaces.
 camera = pygame.Surface(camera_resolution)
@@ -49,9 +59,9 @@ game_title_small = ebrima_main_menu_small.render("Press The Spacebar", True, (0,
 
 #Setting up player assets and stuff.
 #           (Santa Claus)
-
-
-
+santa_s = pygame.Surface((200, 250)).convert_alpha()
+santa_s.fill((50, 50, 50))
+santa_r = santa_s.get_rect() 
 
 
 #Function for quitting the game.
@@ -75,7 +85,7 @@ while True:
 	pygame.display.set_caption(f"Santathon                                        Framerate: {int(clock.get_fps())}                                        Delta Time: {delta}")
 
 #Setting the window icon.
-	icon = pygame.image.load("santa_icon.png").convert_alpha()
+	icon = pygame.image.load("icon.png").convert_alpha()
 	pygame.display.set_icon(icon)
 
 
@@ -122,7 +132,7 @@ while True:
 
 	#If the second fade is over the main game will start.
 		if menu_alpha < 0:
-			game_location == "active_game"
+			game_location = "active_game"
 
 
 	#If the player presses the spacebar the main menu will start to fade away.
@@ -131,10 +141,29 @@ while True:
 
 #Active game logic
 	if game_location == "active_game":
-		pass
-	#
+
+		#Jumping.
+		if input_short_space == True:
+			if santa_cords[1] > 1150:
+					santa_speed = -100
+
+	#Adding downwards momentum each frame.
+		santa_speed += 8
+
+	#Limiting the vertical speed of santa.
+		if santa_speed > 48:
+			santa_speed = 48
+
+	#Moving santa vertically based on his speed.
+		santa_cords[1] += santa_speed
 
 
+	#Making sure santa does not move through the floor.
+		if santa_cords[1] > 1200:
+			santa_cords[1] = 1200
+
+	#Blitting santa to the camera.
+		camera.blit(santa_s, santa_cords)
 
 
 #Blitting camera to window surface.
