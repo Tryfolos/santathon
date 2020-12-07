@@ -67,7 +67,9 @@ while True:
 #Main menu logic.
 	if game_location == "main_menu":
 		if fade == True:
-			title_cords[1] += 0.001 *
+			title_cords[1] += 0.05 * (700 - title_cords[1])
+		if (700 - title_cords[1]) < 1:
+			fade = False
 		game_title = ebrima_main_menu.render("Santathon", True, (0, 0, 0))
 		camera.blit(game_title, title_cords)
 		if input_short_space == True:
