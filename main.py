@@ -55,6 +55,9 @@ obstruction_list = []
 	#Limit to how fast the objects can spawn.
 spawn_timer = 80
 
+	#Used to track location of the score in passive game mode.
+passive_score_cords = [1780, 870]
+
 
 #Creating the two main surfaces.
 camera = pygame.Surface(camera_resolution)
@@ -103,6 +106,9 @@ title_cords = [1280, 500]
 game_title = ebrima_main_menu.render("Santathon", True, (0, 0, 0)).convert_alpha()
 game_title_small = ebrima_main_menu_small.render("Press The Spacebar", True, (0, 0, 0)).convert_alpha()
 
+passive_title = ebrima_main_menu.render("Game Over", True, (0, 0, 0)).convert_alpha()
+passive_title_small = ebrima_main_menu_small.render(f"Score: {score}", True, (0, 0, 0)).convert_alpha()
+
 
 #Setting up player assets and stuff.
 #           (Santa Claus)
@@ -120,11 +126,15 @@ def exit():
 
 #Game over function.
 def game_over():
-	global score
 	global santa_running_speed
 	global santa_cords
 	global santa_jump_speed
-	score = 0
+	global fade
+	global fade2
+	global menu_alpha
+	global menu_small_alpha
+	global title_cords
+	global game_location
 	santa_running_speed = 0
 	santa_cords = [300, 1200]
 	santa_jump_speed = 0
@@ -135,7 +145,9 @@ def game_over():
 	menu_alpha = 255
 	menu_small_alpha = 255
 	title_cords = [1280, 500]
-	menu_location = "passive_game"
+	game_location = "passive_game"
+	passive_title.set_alpha(255)
+	passive_title_small.set_alpha(255)
 
 
 #Creating object for tracking time.
@@ -178,6 +190,10 @@ while True:
 #Main menu logic.
 	if game_location == "main_menu":
 
+	#If the player presses the spacebar the main menu will start to fade away.
+		if input_short_space == True:
+			fade = True
+
 	#This is what happens when the fade has begun.
 		if fade == True:
 			title_cords[1] += 0.1 * (700 - title_cords[1])
@@ -206,40 +222,41 @@ while True:
 	#If the player presses the spacebar the main menu will start to fade away.
 		if input_short_space == True:
 			fade = True
-
 
 #Passive game logic
 	if game_location == "passive_game":
 
+
+	#If the player presses the spacebar the main menu will start to fade away.
+		if input_short_space == True:
+			fade = True
+
 	#This is what happens when the fade has begun.
 		if fade == True:
 			title_cords[1] += 0.1 * (700 - title_cords[1])
 			menu_small_alpha -= 16
-			game_title_small.set_alpha(menu_small_alpha)
+			passive_title_small.set_alpha(menu_small_alpha)
 		if (700 - title_cords[1]) < 1:
 			fade = False
 			fade2 = True
 
-	#Drawing the game title and the instruction below it.
-		camera.blit(game_title, title_cords)
-		camera.blit(game_title_small, (1500, 870))
+	#Drawing the passive title and the score below it. Also updating score font surface to match current score.
+		passive_title_small = ebrima_main_menu_small.render(f"Score: {int(score)}", True, (0, 0, 0)).convert_alpha()
+		passive_title_small.set_alpha(menu_small_alpha)
+		camera.blit(passive_title, (title_cords[0] - 30, title_cords[1]))
+		camera.blit(passive_title_small, passive_score_cords)
 
 
-	#The second phase concists of the game title fading away as the alpha value gets lower.
+	#The second phase concists of the passive title fading away as the alpha value gets lower.
 		if fade2 == True:
 			menu_alpha -= 12
-			game_title.set_alpha(menu_alpha)
+			passive_title.set_alpha(menu_alpha)
 
 
 	#If the second fade is over the main game will start.
 		if menu_alpha < 0:
 			game_location = "active_game"
-
-
-
-	#If the player presses the spacebar the main menu will start to fade away.
-		if input_short_space == True:
-			fade = True
+			score = 0
 
 
 #Active game logic
@@ -308,9 +325,6 @@ while True:
 			thing = f.logic()
 			if thing == "destroy":
 				obstruction_list.remove(f)
-
-
-
 
 
 #Blitting camera to window surface.
