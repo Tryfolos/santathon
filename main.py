@@ -130,6 +130,12 @@ def game_over():
 	santa_jump_speed = 0
 	for f in obstruction_list:
 		obstruction_list.clear()
+	fade = False
+	fade2 = False
+	menu_alpha = 255
+	menu_small_alpha = 255
+	title_cords = [1280, 500]
+	menu_location = "passive_game"
 
 
 #Creating object for tracking time.
@@ -201,6 +207,41 @@ while True:
 		if input_short_space == True:
 			fade = True
 
+
+#Passive game logic
+	if game_location == "passive_game":
+
+	#This is what happens when the fade has begun.
+		if fade == True:
+			title_cords[1] += 0.1 * (700 - title_cords[1])
+			menu_small_alpha -= 16
+			game_title_small.set_alpha(menu_small_alpha)
+		if (700 - title_cords[1]) < 1:
+			fade = False
+			fade2 = True
+
+	#Drawing the game title and the instruction below it.
+		camera.blit(game_title, title_cords)
+		camera.blit(game_title_small, (1500, 870))
+
+
+	#The second phase concists of the game title fading away as the alpha value gets lower.
+		if fade2 == True:
+			menu_alpha -= 12
+			game_title.set_alpha(menu_alpha)
+
+
+	#If the second fade is over the main game will start.
+		if menu_alpha < 0:
+			game_location = "active_game"
+
+
+
+	#If the player presses the spacebar the main menu will start to fade away.
+		if input_short_space == True:
+			fade = True
+
+
 #Active game logic
 	if game_location == "active_game":
 
@@ -241,7 +282,6 @@ while True:
 			#pygame.draw.rect(camera, (255, 0, 255), f.rect)
 			if santa_r.colliderect(f.rect):
 				game_over()
-				game_location = "passive_game"
 		#pygame.draw.rect(camera, (255, 0, 255), santa_r)
 
 
@@ -263,7 +303,6 @@ while True:
 				obstruction_list.append(obstruction)
 
 
-
 	#Cycling through obstruction list and executinf functions within each onstruction object in the list.
 		for f in obstruction_list:
 			thing = f.logic()
@@ -271,9 +310,6 @@ while True:
 				obstruction_list.remove(f)
 
 
-#Passive game logic
-if game_location == "passive_game":
-	pass
 
 
 
