@@ -79,6 +79,9 @@ santa_r_cords = [santa_cords[0] + 15, santa_cords[1]]
 	#Tracks if new ground tile can be spawned.
 tile_collided = False 
 
+	#Tracks if new tree tile can be spawned.
+tree_collided = False
+
 	#Is the game still loading?
 loading = True
 
@@ -89,6 +92,9 @@ debug = False
 	#Tree list. Contains tree objects.
 tree_list = []
 
+	#Determines if tree will be spawned or not.
+tree_spawned = False
+
 #Creating the two main surfaces.
 camera = pygame.Surface(camera_resolution)
 window = pygame.display.set_mode(window_resolution)
@@ -97,8 +103,8 @@ window = pygame.display.set_mode(window_resolution)
 #Loading sprite assets.
 #Some asset loads consist of multiple lines and are therefore clustered together to symbolize what belongs together.
 	#Floor obstructions.
-floor_obstruction_1_s = pygame.image.load("sprites/static/floor_obstruction_1.png").convert_alpha()
-floor_obstruction_1_s = pygame.transform.scale(floor_obstruction_1_s, (64, 64))
+floor_obstruction_s = pygame.image.load("sprites/static/floor_obstruction.png").convert_alpha()
+floor_obstruction_s = pygame.transform.scale(floor_obstruction_s, (64, 64))
 
 	#Ground tiles.
 ground_tile_s = pygame.image.load("sprites/static/ground_tile.png").convert_alpha()
@@ -129,24 +135,25 @@ class ground_tile():
 			return "destroy"
 
 #Tree class.
-class tree():
+class tree_o():
 	def __init__(self):
 		self.image = tree_s
 		self.rect = self.image.get_rect()
 		self.cords = [1920, 725 - 256]
 		self.rect.topleft = self.cords
 	def logic(self):
-		self.cords[0] -= 4 + int(santa_running_speed/200)
+		self.cords[0] -= 7 + int(santa_running_speed/200)
 		self.rect.topleft = self.cords
-		
-
+		camera.blit(self.image, self.cords)
+		if self.cords[0] < -512:
+			return "destroy"
 
 
 #Floor obstruction constructors.
 	#Object number 1.
-class floor_obstruction_1():
+class floor_obstruction():
 	def __init__(self):
-		self.image = floor_obstruction_1_s
+		self.image = floor_obstruction_s
 		self.rect = self.image.get_rect()
 		self.cords = [1920, 725 - 64]
 		self.rect.topleft = self.cords
@@ -164,8 +171,11 @@ class floor_obstruction_2():
 
 
 #Rect object that tracks if a new ground tile should spawn or not.
-ground_checker = pygame.Rect(1920 + (15 + int(santa_running_speed/150)), 725, 64, 64)
+ground_checker = pygame.Rect(1920 + (7 + int(santa_running_speed/200)), 725, 64, 64)
 
+
+#Rect object that tracks if a new tree object should spawn or not.
+tree_checker = pygame.Rect(1920 + (4 + int(santa_running_speed/200)), 725 - 256, 128, 256) 
 
 #Loading font "ebrima.ttf" in different sizes. 
 ebrima_main_menu = pygame.font.Font("ebrima.ttf", 128)
@@ -351,6 +361,15 @@ while True:
 	#Adding score each frame.
 		score += 0.01 + (santa_running_speed/7000)
 
+
+	#Cycling through tree list and executing functions within each tree object in the list.
+		for f in tree_list:
+			thing = f.logic()
+			if thing == "destroy":
+				tree_list.remove(f)
+				thing = "nothing"
+
+
 	#Santa logic.
 		#Increasing santa speed each frame.
 		santa_running_speed += 1
@@ -409,9 +428,9 @@ while True:
 				game_over()
 
 	
-
 	#Updating ground checkers position every frame.
 		ground_checker.topleft = (1920 + (15 + int(santa_running_speed/150)), 725)
+
 
 	#The score that is in the top of the screen.
 		text_score = ebrima_active_game.render(f"Score: {int(score)}", True, (0, 0, 0))
@@ -425,7 +444,7 @@ while True:
 			obstruction_object = random.randint(1, 2)
 			spawn_timer = 80
 			if obstruction_object == 1:
-				obstruction = floor_obstruction_1()
+				obstruction = floor_obstruction()
 				obstruction_list.append(obstruction)
 
 	#Spawning ground tiles when they are no longer colliding with ground checker object.
@@ -434,9 +453,21 @@ while True:
 			if ground_checker.colliderect(f.rect):
 				tile_collided = True
 		if tile_collided == False:
-			ground = ground_tile()
-			ground_list.append(ground)
-		
+				ground = ground_tile()
+				ground_list.append(ground)
+
+	#Spawning trees when they are no longer colliding with tree checker object.
+		tree_spawned = random.randint(1, 80)
+		tree_collided = False 
+		for f in tree_list:
+			if tree_checker.colliderect(f.rect):
+				tree_collided = True
+		if tree_collided == False:
+			if tree_spawned == 1:
+				tree = tree_o()
+				tree_list.append(tree)
+
+
 
 	#Cycling through obstruction list and executing functions within each obstruction object in the list.
 		for f in obstruction_list:
@@ -444,6 +475,7 @@ while True:
 			if thing == "destroy":
 				obstruction_list.remove(f)
 				thing = "nothing"
+
 
 	#Cycling through ground list and executing functions within each object in the list.
 		for f in ground_list:
@@ -464,9 +496,11 @@ while True:
 		#What is seen on screen when debug mode is on.  
 		if debug == True:
 			pygame.draw.rect(camera, (255, 0, 255), ground_checker)
+			pygame.draw.rect(camera, (255, 0, 255), tree_checker)
 			pygame.draw.rect(camera, (255, 0, 255), santa_r)
 			for f in obstruction_list:
 				pygame.draw.rect(camera, (255, 0, 255), f.rect)
+
 
 #Blitting camera to window surface.
 	window.blit(pygame.transform.scale(camera, window_resolution), (0, 0))
