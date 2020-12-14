@@ -34,7 +34,7 @@ camera_resolution = [3840, 2160]
 window_resolution = [1920, 1080]
 
 	#Player cordinates.
-santa_cords = [300, 1200]
+santa_cords = [300, 1250]
 	
 	#The jumping velocity of santa claus.
 santa_jump_speed = 0
@@ -52,11 +52,29 @@ obstruction_object = 0
 obstruction_list = []
 
 
+	#List used as a container for ground tile objects.
+ground_list = []
+
+
 	#Limit to how fast the objects can spawn.
 spawn_timer = 80
 
 	#Used to track location of the score in passive game mode.
-passive_score_cords = [1780, 870]
+passive_score_cords = [1730, 870]
+
+	#Tracks what part of the player animation santa is currently on.
+santa_frame = 0
+
+	#Timer variable used to track time. Pretty simple.
+timer = 20
+
+
+	#Coordinates of santas hitbox.
+santa_r_cords = [santa_cords[0] + 30, santa_cords[1]]
+
+
+	#Tracks if new ground tile can be spawned.
+tile_collided = False 
 
 
 #Creating the two main surfaces.
@@ -66,13 +84,31 @@ window = pygame.display.set_mode(window_resolution)
 
 #Loading sprite assets.
 #Some asset loads consist of multiple lines and are therefore clustered together to symbolize what belongs together.
-floor_obstruction_1_s = pygame.image.load("sprites/floor_obstruction_1.png").convert_alpha()
+	#Floor obstructions.
+floor_obstruction_1_s = pygame.image.load("sprites/static/floor_obstruction_1.png").convert_alpha()
 floor_obstruction_1_s = pygame.transform.scale(floor_obstruction_1_s, (128, 128))
 
+	#Ground tiles.
+ground_tile_s = pygame.image.load("sprites/static/ground_tile.png").convert_alpha()
+ground_tile_s = pygame.transform.scale(ground_tile_s, (128, 128))
 
-#The ground.
+
+#Ground tile class.
 ground = pygame.Surface((3840, 10)).convert_alpha()
-
+class ground_tile():
+	def __init__(self):
+		self.image = ground_tile_s
+		self.rect = self.image.get_rect()
+		self.cords = [3840, 1450]
+		self.rect.topleft = self.cords
+	def logic(self):
+		self.cords[0] -= 15 + int(santa_running_speed/150)
+		self.rect.topleft = self.cords
+		camera.blit(self.image, self.cords)
+		#pygame.draw.rect(camera, (255, 0, 255), self.rect)
+		#print(type(self.image))
+		if self.cords[0] < - 128:
+			return "destroy"
 
 #Floor obstruction constructors.
 	#Object number 1.
@@ -95,6 +131,10 @@ class floor_obstruction_2():
 		pass
 
 
+#Rect object that tracks if a new ground tile should spawn or not.
+ground_checker = pygame.Rect(3840 + (15 + int(santa_running_speed/150)), 1450, 128, 128)
+
+
 #Loading font "ebrima.ttf" in different sizes. 
 ebrima_main_menu = pygame.font.Font("ebrima.ttf", 256)
 ebrima_main_menu_small = pygame.font.Font("ebrima.ttf", 86) 
@@ -112,9 +152,20 @@ passive_title_small = ebrima_main_menu_small.render(f"Score: {score}", True, (0,
 
 #Setting up player assets and stuff.
 #           (Santa Claus)
-santa_s = pygame.Surface((200, 250)).convert_alpha()
-santa_s.fill((50, 50, 50))
-santa_r = santa_s.get_rect() 
+santa_s_running_1 = pygame.image.load("sprites/animations/running/santa_running_1.png").convert_alpha()
+santa_s_running_1 = pygame.transform.scale(santa_s_running_1, (192, 200))
+
+santa_s_running_2 = pygame.image.load("sprites/animations/running/santa_running_2.png").convert_alpha()
+santa_s_running_2 = pygame.transform.scale(santa_s_running_2, (192, 200))
+
+santa_s_running_3 = pygame.image.load("sprites/animations/running/santa_running_3.png").convert_alpha()
+santa_s_running_3 = pygame.transform.scale(santa_s_running_3, (192, 200))
+
+santa_s_running_4 = pygame.image.load("sprites/animations/running/santa_running_4.png").convert_alpha()
+santa_s_running_4 = pygame.transform.scale(santa_s_running_4, (192, 200))
+
+
+santa_r = pygame.Rect(santa_r_cords, (100, 200)) 
 
 
 #Function for quitting the game.
@@ -171,7 +222,7 @@ while True:
 
 
 #Resetting camera surface each frame. No leftovers from last frame allowed!
-	camera.fill((255, 255, 255))
+	camera.fill((150, 240, 255))
 
 #Taking all inputs. Quitting the game if the "x" in the corner is pressed.
 	input_short_space = False
@@ -272,7 +323,7 @@ while True:
 
 		#Jumping.
 		if input_short_space == True:
-			if santa_cords[1] > 1110:
+			if santa_cords[1] > 1150:
 					santa_jump_speed = -100
 
 		#Adding downwards momentum each frame.
@@ -287,27 +338,52 @@ while True:
 
 
 		#Making sure santa does not move through the floor.
-		if santa_cords[1] > 1200:
-			santa_cords[1] = 1200
+		if santa_cords[1] > 1250:
+			santa_cords[1] = 1250
+
+		#Changing what frame is displayed according to santa_frame variable.
+		if timer < 1:
+			santa_frame += 1
+
+
+		#Resetting santa_frame variable once the end of the animation has been reached.
+		if santa_frame > 3:
+			santa_frame = 0
+
 
 		#Blitting santa to the camera.
-		camera.blit(santa_s, santa_cords)
+		if santa_frame == 0:
+			camera.blit(santa_s_running_1, santa_cords)
+
+		if santa_frame == 1:
+			camera.blit(santa_s_running_2, santa_cords)
+
+		if santa_frame == 2:
+			camera.blit(santa_s_running_3, santa_cords)
+
+		if santa_frame == 3:
+			camera.blit(santa_s_running_4, santa_cords)
+
+		#Putting santas hitbox in the right place and updating coordinates based on santas cords.
+		santa_r_cords = [santa_cords[0] + 30, santa_cords[1]]
+		santa_r.topleft = santa_r_cords
 
 		#Collisions with obstruction objects.
-		santa_r.topleft = santa_cords
 		for f in obstruction_list:
 			#pygame.draw.rect(camera, (255, 0, 255), f.rect)
 			if santa_r.colliderect(f.rect):
 				game_over()
 		#pygame.draw.rect(camera, (255, 0, 255), santa_r)
+	
 
+	#Updating ground checkers position every frame.
+		ground_checker.topleft = (3840 + (15 + int(santa_running_speed/150)), 1450)
 
-	#Blitting ground.
-		camera.blit(ground, (0, 1450))
 
 	#The score that is in the top of the screen.
 		text_score = ebrima_active_game.render(f"Score: {int(score)}", True, (0, 0, 0))
 		camera.blit(text_score, (1780, 50))
+
 
 	#Spawning obstruction objects based on a variable and adding them to the list.
 	#Objects will only spawn if the spawn timer is ready (Once a second).
@@ -319,16 +395,41 @@ while True:
 				obstruction = floor_obstruction_1()
 				obstruction_list.append(obstruction)
 
+	#Spawning ground tiles when they are no longer colliding with ground checker object.
+		tile_collided = False
+		for f in ground_list:
+			if ground_checker.colliderect(f.rect):
+				tile_collided = True
+		if tile_collided == False:
+			ground = ground_tile()
+			ground_list.append(ground)
+		print(tile_collided)
+		
 
-	#Cycling through obstruction list and executinf functions within each onstruction object in the list.
+	#Cycling through obstruction list and executing functions within each obstruction object in the list.
 		for f in obstruction_list:
 			thing = f.logic()
 			if thing == "destroy":
 				obstruction_list.remove(f)
+				thing = "nothing"
 
+	#Cycling through ground list and executing functions within each object in the list.
+		for f in ground_list:
+			thing = f.logic()
+			if thing == "destroy":
+				ground_list.remove(f)
+				thing = "nothing"
+		pygame.draw.rect(camera, (255, 0, 255), ground_checker)
 
 #Blitting camera to window surface.
 	window.blit(pygame.transform.scale(camera, window_resolution), (0, 0))
 
 #Updating the window each frame.
 	pygame.display.flip()
+
+#Counting down timer variable and resetting it when it hits 0.
+	timer -= 1
+	if timer < 0:
+		timer = 20-(santa_running_speed/450) 
+
+
