@@ -2,7 +2,7 @@
 import pygame
 import sys
 import random
-
+import os
 
 #Initializing pygame.
 pygame.init()
@@ -29,12 +29,18 @@ input_short_space = False
 
 input_short_tab = False
 
+input_long_a = False
+input_long_d = False
+
+#RANDOM.
+if not os.path.isdir("save"):
+	os.mkdir("save")
 
 	#The resolutions of the "internal" and "external" surfaces. (The game always renders at 4k and then downscales it or upscales it to whatever resolution you want to see.)
 	#Yes, this does cause lower performance but it is a very easy way to make the game compatible with any resolution as long as it is 16:9 aspect ratio.
 	#There are probably better ways to do this but this works well for now.
 camera_resolution = [1920, 1080]
-window_resolution = [1600, 900]
+window_resolution = [1920, 1080]
 
 	#Player cordinates.
 santa_cords = [150, 625]
@@ -77,14 +83,10 @@ santa_r_cords = [santa_cords[0] + 15, santa_cords[1]]
 
 
 	#Tracks if new ground tile can be spawned.
-tile_collided = False 
+ground_tile_spawn = False 
 
 	#Tracks if new tree tile can be spawned.
 tree_collided = False
-
-	#Is the game still loading?
-loading = True
-
 
 	#Tracks if debug mode is on or off.
 debug = False
@@ -95,6 +97,24 @@ tree_list = []
 	#Determines if tree will be spawned or not.
 tree_spawned = False
 
+	#Speed of all the moving objects on screen.
+game_speed = False
+
+	#Determines score multiplier.
+score_boost = 1
+
+	#If high score save file exists, load high score from it. Otherwise, just set it to 0.
+if os.path.isdir("save"):
+	if os.path.isfile("save/high_score.txt"):
+		file = open("save/high_score.txt", "r")
+		value = file.read()
+		if not value == 0:
+			high_score = float(value)
+		file.seek(0)
+		file.close()
+	else:
+		high_score = 0
+
 #Creating the two main surfaces.
 camera = pygame.Surface(camera_resolution)
 window = pygame.display.set_mode(window_resolution)
@@ -103,36 +123,12 @@ window = pygame.display.set_mode(window_resolution)
 #Loading sprite assets.
 #Some asset loads consist of multiple lines and are therefore clustered together to symbolize what belongs together.
 	#Floor obstructions.
-floor_obstruction_s = pygame.image.load("sprites/static/floor_obstruction.png").convert_alpha()
+floor_obstruction_s = pygame.image.load("sprites/static/stone.png").convert_alpha()
 floor_obstruction_s = pygame.transform.scale(floor_obstruction_s, (64, 64))
-
-	#Ground tiles.
-ground_tile_s = pygame.image.load("sprites/static/ground_tile.png").convert_alpha()
-ground_tile_s = pygame.transform.scale(ground_tile_s, (64, 64))
 
 	#Trees in the background
 tree_s = pygame.image.load("sprites/static/tree.png").convert_alpha()
 tree_s = pygame.transform.scale(tree_s, (128, 256))
-
-#Ground tile class.
-ground = pygame.Surface((1920, 10)).convert_alpha()
-class ground_tile():
-	def __init__(self):
-		self.image = ground_tile_s
-		self.rect = self.image.get_rect()
-		self.cords = [1920, 725]
-		self.rect.topleft = self.cords
-	def logic(self):
-		self.cords[0] -= 7 + int(santa_running_speed/200)
-		self.rect.topleft = self.cords
-		camera.blit(self.image, self.cords)
-		camera.blit(self.image, (self.cords[0], self.cords[1] + 64))
-		camera.blit(self.image, (self.cords[0], self.cords[1] + 128))
-		camera.blit(self.image, (self.cords[0], self.cords[1] + 128 + 64))
-		camera.blit(self.image, (self.cords[0], self.cords[1] + 256))
-		camera.blit(self.image, (self.cords[0], self.cords[1] + 256 + 64))
-		if self.cords[0] < - 256:
-			return "destroy"
 
 #Tree class.
 class tree_o():
@@ -142,9 +138,8 @@ class tree_o():
 		self.cords = [1920, 725 - 256]
 		self.rect.topleft = self.cords
 	def logic(self):
-		self.cords[0] -= 7 + int(santa_running_speed/200)
+		#self.cords[0] -= game_speed
 		self.rect.topleft = self.cords
-		camera.blit(self.image, self.cords)
 		if self.cords[0] < -512:
 			return "destroy"
 
@@ -158,9 +153,8 @@ class floor_obstruction():
 		self.cords = [1920, 725 - 64]
 		self.rect.topleft = self.cords
 	def logic(self):
-		self.cords[0] -= 7 + int(santa_running_speed/200)
+		#self.cords[0] -= game_speed
 		self.rect.topleft = (self.cords[0], self.cords[1])
-		camera.blit(self.image, self.cords)
 		if self.cords[0] < -128:
 			return "destroy"
 
@@ -170,26 +164,29 @@ class floor_obstruction_2():
 		pass
 
 
-#Rect object that tracks if a new ground tile should spawn or not.
-ground_checker = pygame.Rect(1920 + (7 + int(santa_running_speed/200)), 725, 64, 64)
-
+#Ground surface(single color).
+ground_s = pygame.Surface((1920, 355)).convert()
+ground_s.fill((245, 245, 245))
 
 #Rect object that tracks if a new tree object should spawn or not.
-tree_checker = pygame.Rect(1920 + (4 + int(santa_running_speed/200)), 725 - 256, 128, 256) 
+tree_checker = pygame.Rect(1920 + (7 + santa_running_speed/200), 725 - 256, 128, 256) 
 
 #Loading font "ebrima.ttf" in different sizes. 
 ebrima_main_menu = pygame.font.Font("ebrima.ttf", 128)
-ebrima_main_menu_small = pygame.font.Font("ebrima.ttf", 43) 
-ebrima_active_game = pygame.font.Font("ebrima.ttf", 41)
+ebrima_main_menu_small = pygame.font.Font("ebrima.ttf", 42)
+ebrima_active_game = pygame.font.Font("ebrima.ttf", 42)
+ebrima_active_game_status = pygame.font.Font("ebrima.ttf", 26)
 title_cords = [640, 250]
 
 
-#Creating surfaces from fonts.
+#Creating text surfaces from fonts.
 game_title = ebrima_main_menu.render("Santathon", True, (0, 0, 0)).convert_alpha()
 game_title_small = ebrima_main_menu_small.render("Press The Spacebar", True, (0, 0, 0)).convert_alpha()
 
 passive_title = ebrima_main_menu.render("Game Over", True, (0, 0, 0)).convert_alpha()
 passive_title_small = ebrima_main_menu_small.render(f"Score: {score}", True, (0, 0, 0)).convert_alpha()
+
+text_double_score = ebrima_active_game_status.render("Double score!", True, (255, 255, 0)).convert_alpha()
 
 
 #Setting up player assets and stuff.
@@ -206,15 +203,12 @@ santa_s_running_3 = pygame.transform.scale(santa_s_running_3, (96, 100))
 santa_s_running_4 = pygame.image.load("sprites/animations/running/santa_running_4.png").convert_alpha()
 santa_s_running_4 = pygame.transform.scale(santa_s_running_4, (96, 100))
 
-
-santa_r = pygame.Rect(santa_r_cords, (50, 100)) 
-
+santa_r = pygame.Rect(santa_r_cords, (50, 100))
 
 #Function for quitting the game.
 def exit():
 	pygame.quit()
 	sys.exit()
-
 
 
 #Game over function.
@@ -262,7 +256,6 @@ while True:
 	pygame.display.set_icon(icon)
 
 
-
 #Resetting camera surface each frame. No leftovers from last frame allowed!
 	camera.fill((150, 200, 255))
 
@@ -278,9 +271,17 @@ while True:
 				input_short_space = True
 			if f.key == pygame.K_TAB:
 				input_short_tab = True
+			if f.key == pygame.K_a:
+				input_long_a = True
+			if f.key == pygame.K_d:
+				input_long_d = True
 		if f.type == pygame.KEYUP:
 			if f.key == pygame.K_SPACE:
 				input_long_space = False
+			if f.key == pygame.K_a:
+				input_long_a = False
+			if f.key == pygame.K_d:
+				input_long_d = False
 
 
 #Main menu logic.
@@ -339,8 +340,11 @@ while True:
 	#Drawing the passive title and the score below it. Also updating score font surface to match current score.
 		passive_title_small = ebrima_main_menu_small.render(f"Score: {int(score)}", True, (0, 0, 0)).convert_alpha()
 		passive_title_small.set_alpha(menu_small_alpha)
+		passive_title_high_score = ebrima_main_menu_small.render(f"High Score: {int(high_score)}", True, (0, 0, 0)).convert_alpha()
+		passive_title_high_score.set_alpha(menu_small_alpha)
 		camera.blit(passive_title, (title_cords[0] - 15, title_cords[1]))
 		camera.blit(passive_title_small, passive_score_cords)
+		camera.blit(passive_title_high_score, (passive_score_cords[0] - 45, passive_score_cords[1] + 50))
 
 
 	#The second phase concists of the passive title fading away as the alpha value gets lower.
@@ -359,8 +363,10 @@ while True:
 	if game_location == "active_game":
 
 	#Adding score each frame.
-		score += 0.01 + (santa_running_speed/7000)
+		score += (0.01 + (santa_running_speed/7000)) * score_boost
 
+	#Speed of all the moving objects on screen.
+		game_speed = 8 + santa_running_speed/200
 
 	#Cycling through tree list and executing functions within each tree object in the list.
 		for f in tree_list:
@@ -369,6 +375,21 @@ while True:
 				tree_list.remove(f)
 				thing = "nothing"
 
+	#Rect object that tracks if a new tree object should spawn or not.
+		tree_checker = pygame.Rect(1920 + (7 + santa_running_speed/200), 725 - 256, 128, 256) 
+		#tree_checker = pygame.Rect(1920, 725 - 256, 128, 256)
+
+
+	#Blitting trees to camera.
+		for f in tree_list:
+			f.cords[0] -= game_speed
+			camera.blit(f.image, f.cords)
+
+
+	#Blitting obstacles to camera.
+		for f in obstruction_list:
+			f.cords[0] -= game_speed
+			camera.blit(f.image, f.cords)
 
 	#Santa logic.
 		#Increasing santa speed each frame.
@@ -394,6 +415,25 @@ while True:
 		#Making sure santa does not move through the floor.
 		if santa_cords[1] > 625:
 			santa_cords[1] = 625
+
+		#Moving horizontally with a and d keys.
+		if input_long_a == True:
+			santa_cords[0] -= 10
+		if input_long_d == True:
+			santa_cords[0] += 8
+
+		#Limit how far santa can go to the left and right of the screen.
+		if santa_cords[0] < 100:
+			santa_cords[0] = 100
+
+		if santa_cords[0] > 1500:
+			santa_cords[0] = 1500
+
+		#If santa is running really close to the end of the screen he will get score faster.
+		if santa_cords[0] > 960 - 48:
+			score_boost = 2
+		else:
+			score_boost = 1
 
 		#Changing what frame is displayed according to santa_frame variable.
 		if timer < 1:
@@ -426,16 +466,25 @@ while True:
 		for f in obstruction_list:
 			if santa_r.colliderect(f.rect):
 				game_over()
-
-	
-	#Updating ground checkers position every frame.
-		ground_checker.topleft = (1920 + (15 + int(santa_running_speed/150)), 725)
+				if score > high_score:
+					high_score = score
+					if not os.path.isfile("save/high_score.txt"):
+						file = open("save/high_score.txt", "w")
+						file.close()
+					file = open("save/high_score.txt", "r+")
+					file.truncate(0)
+					file.seek(0)
+					file.write(str(int(high_score)))
+					file.close()
 
 
 	#The score that is in the top of the screen.
 		text_score = ebrima_active_game.render(f"Score: {int(score)}", True, (0, 0, 0))
 		camera.blit(text_score, (890, 25))
 
+	#Blitting double score to camera.
+		if score_boost == 2:
+			camera.blit(text_double_score, (890, 110))
 
 	#Spawning obstruction objects based on a variable and adding them to the list.
 	#Objects will only spawn if the spawn timer is ready (Once a second).
@@ -446,15 +495,6 @@ while True:
 			if obstruction_object == 1:
 				obstruction = floor_obstruction()
 				obstruction_list.append(obstruction)
-
-	#Spawning ground tiles when they are no longer colliding with ground checker object.
-		tile_collided = False
-		for f in ground_list:
-			if ground_checker.colliderect(f.rect):
-				tile_collided = True
-		if tile_collided == False:
-				ground = ground_tile()
-				ground_list.append(ground)
 
 	#Spawning trees when they are no longer colliding with tree checker object.
 		tree_spawned = random.randint(1, 80)
@@ -468,7 +508,6 @@ while True:
 				tree_list.append(tree)
 
 
-
 	#Cycling through obstruction list and executing functions within each obstruction object in the list.
 		for f in obstruction_list:
 			thing = f.logic()
@@ -476,26 +515,20 @@ while True:
 				obstruction_list.remove(f)
 				thing = "nothing"
 
-
-	#Cycling through ground list and executing functions within each object in the list.
-		for f in ground_list:
-			thing = f.logic()
-			if thing == "destroy":
-				ground_list.remove(f)
-				thing = "nothing"
-
+	#Blitting ground surface.
+		camera.blit(ground_s, (0, 725))
 
 	#ACTIVE GAME DEBUG.
 		#Changing state of debug with tab key.
 		if input_short_tab == True:
 			if debug == False:
 				debug = True
+				print("Debug mode is on.")
 			else:
 				debug = False
 
 		#What is seen on screen when debug mode is on.  
 		if debug == True:
-			pygame.draw.rect(camera, (255, 0, 255), ground_checker)
 			pygame.draw.rect(camera, (255, 0, 255), tree_checker)
 			pygame.draw.rect(camera, (255, 0, 255), santa_r)
 			for f in obstruction_list:
@@ -512,5 +545,6 @@ while True:
 	timer -= 1
 	if timer < 0:
 		timer = 16-(santa_running_speed/400) 
+
 
 
