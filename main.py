@@ -26,11 +26,18 @@ score = 0
 	#Keyboard inputs.
 input_long_space = False
 input_short_space = False
+input_release_space = False
+
 
 input_short_tab = False
 
 input_long_a = False
 input_long_d = False
+
+input_short_a = False
+input_short_d = False
+
+input_short_enter = False
 
 #RANDOM.
 if not os.path.isdir("save"):
@@ -108,7 +115,27 @@ gap_cords = [1920, 725]
 gap_size = (220 + int(santa_running_speed/50))
 gap_resolution = [gap_size, 1080]
 
-	#If high score save file exists, load high score from it. Otherwise, just set it to 0.
+	#The positions of the menu options
+resolution_sign_cords = [830, 820]
+resolution_1_cords = [100, 950] 
+resolution_2_cords = [600, 950]
+resolution_3_cords = [1100, 950]
+resolution_4_cords = [1600, 950]
+
+	#Opacity of resolution options in menus.
+resolution_opacity = 255
+
+	#Determines what resolution you have selected at the moment.
+current_resolution = "1080"
+
+	#Holds the amount of frames the spacebar has been pressed down.
+space_hold = 0
+
+	#List that contains all the snow flake objects.
+flake_list = []
+
+
+#If high score save file exists, load high score from it. Otherwise, just set it to 0.
 if os.path.isdir("save"):
 	if os.path.isfile("save/high_score.txt"):
 		file = open("save/high_score.txt", "r")
@@ -142,6 +169,10 @@ stone_1_s = pygame.transform.scale(stone_1_s, (64, 64))
 stone_2_s = pygame.image.load("sprites/static/small_stones/2.png").convert_alpha()
 stone_2_s = pygame.transform.scale(stone_2_s, (64, 64))
 
+	#The sun.
+sun_s = pygame.image.load("sprites/static/sun.png").convert_alpha()
+sun_s = pygame.transform.scale(sun_s, (128, 128))
+
 #Ground surface(single color) and ground rect.
 ground_s = pygame.Surface((1920, 355)).convert()
 ground_s.fill((255, 255, 255))
@@ -169,18 +200,17 @@ class tree_o():
 class floor_obstruction():
 	def __init__(self):
 		self.image = floor_obstruction_s
-		self.rect = self.image.get_rect()
+		self.rect = pygame.Rect(0, 0, 50, 70)
 		self.cords = [1920, 725 - 80]
-		self.rect.topleft = self.cords
 	def logic(self):
 		#self.cords[0] -= game_speed
-		self.rect.topleft = (self.cords[0], self.cords[1])
+		self.rect.topleft = (self.cords[0] + 7, self.cords[1] + 10)
 		if self.cords[0] < -128:
 			return "destroy"
 		if self.rect.colliderect(void_r):
 			return "destroy"
 
-	#Small stones.
+#Small stones.
 class small_stone():
 	def __init__(self):
 		self.image = random.choice((stone_1_s, stone_2_s))
@@ -189,6 +219,34 @@ class small_stone():
 		self.cords[0] -= game_speed
 		camera.blit(self.image, self.cords)
 		if self.cords[0] < 0 - 64:
+			return "destroy"
+
+
+#Snow flake that fall from the top of the screen.
+class snow_flake():
+	def __init__(self):
+		self.image = pygame.Surface((4, 4))
+		self.image.fill((255, 255, 255))
+		self.cords = [random.randint(0, 10000), -4]
+		self.speed = random.randint(4, 8)
+		self.swing = random.randint(0, 1)
+		self.timer = 100
+	def logic(self):
+		self.timer -= 1
+		if self.timer < 0:
+			self.timer = 100
+			if self.swing == 0:
+				self.swing = 1
+			else:
+				self.swing = 0
+		if self.swing == 0:
+			self.cords[0] -= self.timer/50
+		if self.swing == 1:
+			self.cords[0] += self.timer/50
+		self.cords[1] += self.speed
+		self.cords[0] -= game_speed
+		camera.blit(self.image, self.cords)
+		if self.cords[1] > 1080:
 			return "destroy"
 
 #Hole in ground entity.
@@ -210,12 +268,28 @@ title_cords = [640, 250]
 
 #Creating text surfaces from fonts.
 game_title = ebrima_main_menu.render("Santathon", True, (0, 0, 0)).convert_alpha()
-game_title_small = ebrima_main_menu_small.render("Press The Spacebar", True, (0, 0, 0)).convert_alpha()
+game_title_small = ebrima_main_menu_small.render("Hold Spacebar", True, (0, 0, 0)).convert_alpha()
 
 passive_title = ebrima_main_menu.render("Game Over", True, (0, 0, 0)).convert_alpha()
 passive_title_small = ebrima_main_menu_small.render(f"Score: {score}", True, (0, 0, 0)).convert_alpha()
 
 text_double_score = ebrima_active_game_status.render("Double score!", True, (255, 255, 0)).convert_alpha()
+
+#Menu settings.
+	#Title of resolution setting section of main menu.
+resolution_sign_s = ebrima_main_menu_small.render("Resolutions", True, (0, 0, 0)).convert_alpha()
+
+	#Resolution settings that have not been chosen (They remain black while it is not the selected option).
+resolution_off_1_s = ebrima_main_menu_small.render("1280x720", True, (0, 0, 0)).convert_alpha()
+resolution_off_2_s = ebrima_main_menu_small.render("1920x1080", True, (0, 0, 0)).convert_alpha()
+resolution_off_3_s = ebrima_main_menu_small.render("2560x1440", True, (0, 0, 0)).convert_alpha()
+resolution_off_4_s = ebrima_main_menu_small.render("3840x2160", True, (0, 0, 0)).convert_alpha()
+
+	#Resolution settings that have been chosen (They are yellow while they are chosen).
+resolution_on_1_s = ebrima_main_menu_small.render("1280x720", True, (255, 255, 0)).convert_alpha()
+resolution_on_2_s = ebrima_main_menu_small.render("1920x1080", True, (255, 255, 0)).convert_alpha()
+resolution_on_3_s = ebrima_main_menu_small.render("2560x1440", True, (255, 255, 0)).convert_alpha()
+resolution_on_4_s = ebrima_main_menu_small.render("3840x2160", True, (255, 255, 0)).convert_alpha()
 
 
 #Setting up player assets and stuff.
@@ -253,8 +327,7 @@ def game_over():
 	global game_location
 	global gap_cords
 	global gap_size
-	global high_score
-	global score
+	global resolution_opacity
 	santa_running_speed = 0
 	santa_cords = [150, 600]
 	santa_jump_speed = 0
@@ -270,16 +343,7 @@ def game_over():
 	passive_title_small.set_alpha(255)
 	gap_cords = [1920, 725]
 	gap_size = (220 + int(santa_running_speed/50))
-	if score > high_score:
-		high_score = score
-		if not os.path.isfile("save/high_score.txt"):
-			file = open("save/high_score.txt", "w")
-			file.close()
-			file = open("save/high_score.txt", "r+")
-			file.truncate(0)
-			file.seek(0)
-			file.write(str(int(high_score)))
-			file.close()
+	resolution_opacity = 255
 
 
 #Creating object for tracking time.
@@ -294,7 +358,7 @@ while True:
 
 
 #Setting the window caption. There are 40 spaces between game title and framerate numbers.
-	pygame.display.set_caption(f"Santathon                                        Version: 1.1                                        Framerate: {int(clock.get_fps())}")
+	pygame.display.set_caption(f"Santathon                                        Version: 1.3DEV                                        Framerate: {int(clock.get_fps())}")
 
 #Setting the window icon.
 	icon = pygame.image.load("icon.png").convert_alpha()
@@ -307,6 +371,10 @@ while True:
 #Taking all inputs. Quitting the game if the "x" in the corner is pressed.
 	input_short_space = False
 	input_short_tab = False
+	input_short_a = False
+	input_short_d = False
+	input_short_enter = False
+	input_release_space = False
 	for f in pygame.event.get():
 		if f.type == pygame.QUIT:
 			exit()
@@ -318,11 +386,16 @@ while True:
 				input_short_tab = True
 			if f.key == pygame.K_a:
 				input_long_a = True
+				input_short_a = True
 			if f.key == pygame.K_d:
 				input_long_d = True
+				input_short_d = True
+			if f.key == pygame.K_RETURN:
+				input_short_enter = True
 		if f.type == pygame.KEYUP:
 			if f.key == pygame.K_SPACE:
 				input_long_space = False
+				input_release_space = True
 			if f.key == pygame.K_a:
 				input_long_a = False
 			if f.key == pygame.K_d:
@@ -332,22 +405,136 @@ while True:
 #Main menu logic.
 	if game_location == "main_menu":
 
-	#If the player presses the spacebar the main menu will start to fade away.
-		if input_short_space == True:
+	#If the player holds the spacebar for 0.5 seconds the main menu will start to fade away.
+		if space_hold >= 40:
 			fade = True
+			
 
 	#This is what happens when the fade has begun.
 		if fade == True:
 			title_cords[1] += 0.1 * (350 - title_cords[1])
 			menu_small_alpha -= 16
 			game_title_small.set_alpha(menu_small_alpha)
+			resolution_opacity -= 16
 		if (350 - title_cords[1]) < 1:
 			fade = False
 			fade2 = True
 
 	#Drawing the game title and the instruction below it.
 		camera.blit(game_title, title_cords)
-		camera.blit(game_title_small, (750, 435))
+		camera.blit(game_title_small, (800, 435))
+
+
+	#If the spacebar is held down, the space_hold variable will add +1 every frame.
+		if input_long_space == True:
+			space_hold += 1
+		if input_long_space == False:
+			space_hold = 0
+
+	#Resolution settings.
+		#This text will always be the same no matter what resolution is selected since it is the title of the resolution settings section of the main menu.
+		camera.blit(resolution_sign_s, resolution_sign_cords)
+
+		#Setting the opacity of the resolution settings.
+		resolution_sign_s.set_alpha(resolution_opacity)
+
+		resolution_off_1_s.set_alpha(resolution_opacity)
+		resolution_off_2_s.set_alpha(resolution_opacity)
+		resolution_off_3_s.set_alpha(resolution_opacity)
+		resolution_off_4_s.set_alpha(resolution_opacity)
+
+		resolution_on_1_s.set_alpha(resolution_opacity)
+		resolution_on_2_s.set_alpha(resolution_opacity)
+		resolution_on_3_s.set_alpha(resolution_opacity)
+		resolution_on_4_s.set_alpha(resolution_opacity)
+
+		#Drawing resolution settings using current_resolution variable to determine what settings should be colored yellow instead of black. There is also an animation where the text rises up a little bit when it is selected.
+		if current_resolution == "720":
+			camera.blit(resolution_on_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_1_cords[1] > 900:
+				resolution_1_cords[1] -= (resolution_1_cords[1] - 900)/5
+		else:
+			if resolution_1_cords[1] < 950:
+				resolution_1_cords[1] += (950 - resolution_1_cords[1])/5
+
+		if current_resolution == "1080":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_on_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_2_cords[1] > 900:
+				resolution_2_cords[1] -= (resolution_2_cords[1] - 900)/5
+		else:
+			if resolution_2_cords[1] < 950:
+				resolution_2_cords[1] += (950 - resolution_2_cords[1])/5
+
+		if current_resolution == "1440":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_on_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_3_cords[1] > 900:
+				resolution_3_cords[1] -= (resolution_3_cords[1] - 900)/5
+		else:
+			if resolution_3_cords[1] < 950:
+				resolution_3_cords[1] += (950 - resolution_3_cords[1])/5
+
+		if current_resolution == "2160":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_on_4_s, resolution_4_cords)
+			if resolution_4_cords[1] > 900:
+				resolution_4_cords[1] -= (resolution_4_cords[1] - 900)/5
+		else:
+			if resolution_4_cords[1] < 950:
+				resolution_4_cords[1] += (950 - resolution_4_cords[1])/5
+
+		#Taking input and changing current_resolution setting.
+		if input_short_a == True:
+			if current_resolution == "720":
+				current_resolution = "2160"
+			elif current_resolution == "1080":
+				current_resolution = "720"
+			elif current_resolution == "1440":
+				current_resolution = "1080"
+			elif current_resolution == "2160":
+				current_resolution = "1440"
+				
+
+		if input_short_d == True:
+			if current_resolution == "720":
+				current_resolution = "1080"
+			elif current_resolution == "1080":
+				current_resolution = "1440"
+			elif current_resolution == "1440":
+				current_resolution = "2160"
+			elif current_resolution == "2160":
+				current_resolution = "720"
+
+		#Activating selected resolution setting if user presses enter or space (short).
+		if current_resolution == "720":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [1280, 720]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "1080":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [1920, 1080]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "1440":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [2560, 1440]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "2160":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [3840, 2160]
+				window = pygame.display.set_mode(window_resolution)
 
 
 	#The second phase concists of the game title fading away as the alpha value gets lower.
@@ -359,25 +546,135 @@ while True:
 	#If the second fade is over the main game will start.
 		if menu_alpha < 0:
 			game_location = "active_game"
-
-
-	#If the player presses the spacebar the main menu will start to fade away.
-		if input_short_space == True:
-			fade = True
+			
 
 #Passive game logic
 	if game_location == "passive_game":
 
 
-	#If the player presses the spacebar the main menu will start to fade away.
-		if input_short_space == True:
+	#If the spacebar is held down, the space_hold variable will add +1 every frame.
+		if input_long_space == True:
+			space_hold += 1
+		if input_long_space == False:
+			space_hold = 0
+
+	#If the player holds the spacebar for 0.5 seconds the main menu will start to fade away.
+		if space_hold >= 40:
 			fade = True
+
+#Resolution settings.
+		#This text will always be the same no matter what resolution is selected since it is the title of the resolution settings section of the main menu.
+		camera.blit(resolution_sign_s, resolution_sign_cords)
+
+		#Setting the opacity of the resolution settings.
+		resolution_sign_s.set_alpha(resolution_opacity)
+
+		resolution_off_1_s.set_alpha(resolution_opacity)
+		resolution_off_2_s.set_alpha(resolution_opacity)
+		resolution_off_3_s.set_alpha(resolution_opacity)
+		resolution_off_4_s.set_alpha(resolution_opacity)
+
+		resolution_on_1_s.set_alpha(resolution_opacity)
+		resolution_on_2_s.set_alpha(resolution_opacity)
+		resolution_on_3_s.set_alpha(resolution_opacity)
+		resolution_on_4_s.set_alpha(resolution_opacity)
+
+		#Drawing resolution settings using current_resolution variable to determine what settings should be colored yellow instead of black. There is also an animation where the text rises up a little bit when it is selected.
+		if current_resolution == "720":
+			camera.blit(resolution_on_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_1_cords[1] > 900:
+				resolution_1_cords[1] -= (resolution_1_cords[1] - 900)/5
+		else:
+			if resolution_1_cords[1] < 950:
+				resolution_1_cords[1] += (950 - resolution_1_cords[1])/5
+
+		if current_resolution == "1080":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_on_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_2_cords[1] > 900:
+				resolution_2_cords[1] -= (resolution_2_cords[1] - 900)/5
+		else:
+			if resolution_2_cords[1] < 950:
+				resolution_2_cords[1] += (950 - resolution_2_cords[1])/5
+
+		if current_resolution == "1440":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_on_3_s, resolution_3_cords)
+			camera.blit(resolution_off_4_s, resolution_4_cords)
+			if resolution_3_cords[1] > 900:
+				resolution_3_cords[1] -= (resolution_3_cords[1] - 900)/5
+		else:
+			if resolution_3_cords[1] < 950:
+				resolution_3_cords[1] += (950 - resolution_3_cords[1])/5
+
+		if current_resolution == "2160":
+			camera.blit(resolution_off_1_s, resolution_1_cords)
+			camera.blit(resolution_off_2_s, resolution_2_cords)
+			camera.blit(resolution_off_3_s, resolution_3_cords)
+			camera.blit(resolution_on_4_s, resolution_4_cords)
+			if resolution_4_cords[1] > 900:
+				resolution_4_cords[1] -= (resolution_4_cords[1] - 900)/5
+		else:
+			if resolution_4_cords[1] < 950:
+				resolution_4_cords[1] += (950 - resolution_4_cords[1])/5
+
+		#Taking input and changing current_resolution setting.
+		if input_short_a == True:
+			if current_resolution == "720":
+				current_resolution = "2160"
+			elif current_resolution == "1080":
+				current_resolution = "720"
+			elif current_resolution == "1440":
+				current_resolution = "1080"
+			elif current_resolution == "2160":
+				current_resolution = "1440"
+				
+
+		if input_short_d == True:
+			if current_resolution == "720":
+				current_resolution = "1080"
+			elif current_resolution == "1080":
+				current_resolution = "1440"
+			elif current_resolution == "1440":
+				current_resolution = "2160"
+			elif current_resolution == "2160":
+				current_resolution = "720"
+
+
+		#Activating selected resolution setting if user presses enter or space (short).
+		if current_resolution == "720":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [1280, 720]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "1080":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [1920, 1080]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "1440":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [2560, 1440]
+				window = pygame.display.set_mode(window_resolution)
+
+		if current_resolution == "2160":
+			if input_short_enter == True or input_release_space == True:
+				window_resolution = [3840, 2160]
+				window = pygame.display.set_mode(window_resolution)
+
 
 	#This is what happens when the fade has begun.
 		if fade == True:
 			title_cords[1] += 0.1 * (350 - title_cords[1])
 			menu_small_alpha -= 16
 			passive_title_small.set_alpha(menu_small_alpha)
+			resolution_opacity -= 16
 		if (350 - title_cords[1]) < 1:
 			fade = False
 			fade2 = True
@@ -493,7 +790,7 @@ while True:
 		santa_cords[1] += santa_jump_speed
 
 
-		#Making sure santa does not move through the floor. When santa 
+		#Making sure santa does not move through the floor. 
 		if santa_cords[1] > 625:
 			if not santa_r.colliderect(ground_r):
 				if not void_r.contains(santa_r):
@@ -514,6 +811,16 @@ while True:
 		#Once santa has fallen far enough game is over.
 		if santa_cords[1] > 1000:
 			game_over()
+			if score > high_score:
+				high_score = score
+				if not os.path.isfile("save/high_score.txt"):
+					file = open("save/high_score.txt", "w")
+					file.close()
+				file = open("save/high_score.txt", "r+")
+				file.truncate(0)
+				file.seek(0)
+				file.write(str(int(high_score)))
+				file.close()
 
 		#Moving horizontally with a and d keys.
 		if input_long_a == True:
@@ -565,7 +872,29 @@ while True:
 		for f in obstruction_list:
 			if santa_r.colliderect(f.rect):
 				game_over()
+				if score > high_score:
+					high_score = score
+					if not os.path.isfile("save/high_score.txt"):
+						file = open("save/high_score.txt", "w")
+						file.close()
+					file = open("save/high_score.txt", "r+")
+					file.truncate(0)
+					file.seek(0)
+					file.write(str(int(high_score)))
+					file.close()
 
+	#Spawning snow flakes two times per frame.
+		thing = snow_flake()
+		flake_list.append(thing)
+
+		thing = snow_flake()
+		flake_list.append(thing)
+
+	#Running snow flakes.
+		for f in flake_list:
+			thing = f.logic()
+			if thing == "destroy":
+				flake_list.remove(f)
 
 
 	#The score that is in the top of the screen.
