@@ -1,2 +1,2 @@
-pyinstaller --onefile -n "Santathon v1.3DEV.exe" -i icon.ico --noconsole main.py
+pyinstaller --onefile -n "Santathon v1.4DEV.exe" -i icon.ico --noconsole main.py
 cmd/K

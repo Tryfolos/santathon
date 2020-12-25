@@ -1,8 +1,13 @@
+#################### Santathon : By Filip Hedman ####################
+####################        Version : 1.4        ####################
+####################          Framemaker         ####################
+
 #Importing stuff.
 import pygame
 import sys
 import random
 import os
+import math
 
 #Initializing pygame.
 pygame.init()
@@ -28,7 +33,6 @@ input_long_space = False
 input_short_space = False
 input_release_space = False
 
-
 input_short_tab = False
 
 input_long_a = False
@@ -38,6 +42,11 @@ input_short_a = False
 input_short_d = False
 
 input_short_enter = False
+
+input_short_1 = False
+input_short_2 = False
+input_short_3 = False
+input_short_4 = False
 
 #RANDOM.
 if not os.path.isdir("save"):
@@ -66,10 +75,6 @@ obstruction_object = 0
 
 	#List used as a container for floor obstruction objects.
 obstruction_list = []
-
-
-	#List used as a container for ground tile objects.
-ground_list = []
 
 
 	#Limit to how fast the objects can spawn.
@@ -112,8 +117,7 @@ small_stone_list = []
 gap_cords = [1920, 725]
 
 	#Size of the ground gap.
-gap_size = (220 + int(santa_running_speed/50))
-gap_resolution = [gap_size, 1080]
+gap_resolution = [250, 1080]
 
 	#The positions of the menu options
 resolution_sign_cords = [830, 820]
@@ -134,6 +138,56 @@ space_hold = 0
 	#List that contains all the snow flake objects.
 flake_list = []
 
+	#Sun and moon coordinates.
+sunmoon_cords = [1500, 750]
+
+	#Sun and moon direction.
+sunmoon_direction = "up"
+
+	#Determines if the sun or the moon is active.
+sunmoon_mode = "sun"
+
+	#The oopacity of night_s.
+night_s_opacity = 0
+
+	#The speed that the sun and moon moves at (vertically).
+sunmoon_speed = -0.5
+
+ 	#What mode was sunmoon in last frame?
+sunmmon_pastmode = "nothing"
+
+	#Coordinates of mountains.
+mountain_cords = [1920, 725 - 256]
+
+	#Mountain Oopacity
+mountain_opacity = 0
+
+	#Mountain shader cords.
+mountain_shader_cords = [-4, 0]
+
+	#Opacity of the hole darkener.
+hole_opacity = 10
+
+	#Ground opacity.
+ground_opacity = 0
+
+	#hole background coordinates.
+background_cords = [0, 0]
+
+	#Sky color.
+sky_color = [150, 200, 255]
+
+	#Target fps.
+target_fps = 80
+
+	#Opacity of the second hole_background darkener.
+hole_opacity_2 = 100
+
+	#The position to blit the second darkener surface to.
+hole_background_darkener_2_cords = [0, 0]
+
+	#The position to blit the darkener surface to.
+hole_background_darkener_cords = [0, 0]
 
 #If high score save file exists, load high score from it. Otherwise, just set it to 0.
 if os.path.isdir("save"):
@@ -152,26 +206,53 @@ camera = pygame.Surface(camera_resolution)
 window = pygame.display.set_mode(window_resolution)
 
 
-#Loading sprite assets.
-#Some asset loads consist of multiple lines and are therefore clustered together to symbolize what belongs together.
-	#Floor obstructions.
+#Floor obstructions.
 floor_obstruction_s = pygame.image.load("sprites/static/stone.png").convert_alpha()
 floor_obstruction_s = pygame.transform.scale(floor_obstruction_s, (64, 80))
 
-	#Trees in the background
+#Trees in the background
 tree_s = pygame.image.load("sprites/static/tree.png").convert_alpha()
 tree_s = pygame.transform.scale(tree_s, (128, 256))
 
-	#Small stones in the ground.
+#Small stones in the ground.
 stone_1_s = pygame.image.load("sprites/static/small_stones/1.png").convert_alpha()
 stone_1_s = pygame.transform.scale(stone_1_s, (64, 64))
 
 stone_2_s = pygame.image.load("sprites/static/small_stones/2.png").convert_alpha()
 stone_2_s = pygame.transform.scale(stone_2_s, (64, 64))
 
-	#The sun.
+#The sun.
 sun_s = pygame.image.load("sprites/static/sun.png").convert_alpha()
 sun_s = pygame.transform.scale(sun_s, (128, 128))
+
+#The moon.
+moon_s = pygame.image.load("sprites/static/moon.png").convert_alpha()
+moon_s = pygame.transform.scale(moon_s, (128, 128))
+
+#Mountains.
+mountain_s = pygame.image.load("sprites/static/mountains.png").convert_alpha()
+mountain_s = pygame.transform.scale(mountain_s, (512, 256))
+
+#Mountain shader.
+mountain_shader = pygame.Surface((1, 1)).convert_alpha()
+mountain_shader.fill((0, 0, 0))
+
+#Shading mountains.
+thing = [0, 0, 0, 0]
+while mountain_opacity < 130:
+	mountain_opacity += 0.5
+	mountain_shader.set_alpha(mountain_opacity)
+	mountain_shader_cords[1] += 1
+	mountain_shader_cords[0] = -1
+	while mountain_shader_cords[0] < 512:
+		if mountain_shader_cords[0] > -1:
+			if mountain_shader_cords[0] < 512:
+				if mountain_shader_cords[1] > 0:
+					if mountain_shader_cords[1] < 256:
+						thing = mountain_s.get_at(mountain_shader_cords)
+		if not thing[3] < 255:
+			mountain_s.blit(mountain_shader, (mountain_shader_cords))
+		mountain_shader_cords[0] += 1
 
 #Ground surface(single color) and ground rect.
 ground_s = pygame.Surface((1920, 355)).convert()
@@ -179,6 +260,15 @@ ground_s.fill((255, 255, 255))
 
 ground_r = ground_s.get_rect()
 ground_r.topleft = (0, 725)
+
+#Shading ground surface.
+ground_s_shader = pygame.Surface((1920, 4)).convert_alpha()
+ground_s_shader.fill((0, 0, 0))
+while ground_opacity < 25:
+	ground_s_shader.set_alpha(ground_opacity)
+	ground_s.blit(ground_s_shader, (0, ground_opacity*16))
+	ground_opacity += 0.25
+
 
 #Tree class.
 class tree_o():
@@ -232,7 +322,7 @@ class snow_flake():
 		self.swing = random.randint(0, 1)
 		self.timer = 100
 	def logic(self):
-		self.timer -= 1
+		self.timer -= 1 * delta
 		if self.timer < 0:
 			self.timer = 100
 			if self.swing == 0:
@@ -240,19 +330,74 @@ class snow_flake():
 			else:
 				self.swing = 0
 		if self.swing == 0:
-			self.cords[0] -= self.timer/50
+			self.cords[0] -= (self.timer/50)*delta
 		if self.swing == 1:
-			self.cords[0] += self.timer/50
-		self.cords[1] += self.speed
+			self.cords[0] += (self.timer/50)*delta
+		self.cords[1] += self.speed * delta
 		self.cords[0] -= game_speed
 		camera.blit(self.image, self.cords)
-		if self.cords[1] > 1080:
+		if self.cords[1] > 10000:
 			return "destroy"
+
+
+#Darkness surface during night time.
+night_s = pygame.Surface((camera_resolution)).convert_alpha()
+night_s.fill((0, 0, 0))
+night_s.set_alpha(night_s_opacity)
 
 #Hole in ground entity.
 void_s = pygame.Surface(gap_resolution)
 void_s.fill((150, 200, 255))
 void_r = pygame.Rect(gap_cords[0], 1920, 64 + santa_running_speed/100, 1080)
+
+
+#Background of ground hole.
+hole_background = pygame.Surface(gap_resolution).convert_alpha()
+hole_background.fill((255, 255, 255))
+hole_background_darkener = pygame.Surface((gap_resolution[0], 4)).convert_alpha()
+hole_background_darkener.fill((0, 0, 0))
+hole_background_darkener_2 = pygame.Surface((4, 355)).convert_alpha()
+hole_background_darkener_2.fill((0, 0, 0))
+
+
+#Adding small stones to hole_background.
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_1_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64))) 
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+hole_background.blit(stone_2_s, (random.randint(0, 250 - 64), random.randint(0, 355 - 64)))
+
+
+#Blits darkener surface to hole background surface to make a fade effect where it gets darker the further down the hole it gets.
+while True:
+	hole_background_darkener.set_alpha(hole_opacity)
+	hole_opacity += 2
+	hole_background_darkener_cords[1] += 4
+	hole_background.blit(hole_background_darkener, hole_background_darkener_cords)
+	if hole_background_darkener_cords[1] > 355:
+		break
+
+#Blits second darkener surface from left to right of on top of the hole_background surface. It is the brightest in the middle and darkest at the edges.
+while True:
+	hole_background_darkener_2.set_alpha(hole_opacity_2)
+	hole_background_darkener_2_cords[0] += 4
+	if hole_background_darkener_2_cords[0] < 125:
+		hole_opacity_2 -= 2.5
+	if hole_background_darkener_2_cords[0] > 125:
+		hole_opacity_2 += 2.5
+	if hole_opacity_2 < 0:
+		hole_opacity_2 = 0
+	hole_background.blit(hole_background_darkener_2, hole_background_darkener_2_cords)
+	if hole_background_darkener_2_cords[0] > 250:
+		break
 
 
 #Rect object that tracks if a new tree object should spawn or not.
@@ -326,8 +471,13 @@ def game_over():
 	global title_cords
 	global game_location
 	global gap_cords
-	global gap_size
 	global resolution_opacity
+	global sunmoon_speed
+	global sunmoon_cords
+	global sunmoon_mode
+	global sunmoon_direction
+	global night_s_opacity
+	global sky_color
 	santa_running_speed = 0
 	santa_cords = [150, 600]
 	santa_jump_speed = 0
@@ -342,23 +492,38 @@ def game_over():
 	passive_title.set_alpha(255)
 	passive_title_small.set_alpha(255)
 	gap_cords = [1920, 725]
-	gap_size = (220 + int(santa_running_speed/50))
 	resolution_opacity = 255
+	sunmoon_speed = -0.5
+	sunmoon_cords = [1500, 750]
+	sunmoon_mode = "sun"
+	sunmoon_direction = "up"
+	night_s_opacity = 0
+	sky_color = [150, 200, 255]
 
 
 #Creating object for tracking time.
 clock = pygame.time.Clock()
 
-
 #Start of main game loop.
 while True:
 
 #Checking time spent between frames.
-	delta = clock.tick(80)
+	delta = clock.tick(target_fps)
+	delta = delta/12.5
+	print(delta)
 
+#Changing framerate depending on which one of the number keys you pressed the most recently. 
+	if input_short_1 == True:
+		target_fps = 30
+	if input_short_2 == True:
+		target_fps = 60
+	if input_short_3 == True:
+		target_fps = 80
+	if input_short_4 == True:
+		target_fps = 120
 
 #Setting the window caption. There are 40 spaces between game title and framerate numbers.
-	pygame.display.set_caption(f"Santathon                                        Version: 1.3DEV                                        Framerate: {int(clock.get_fps())}")
+	pygame.display.set_caption(f"Santathon                                        Version: 1.4DEV                                        Framerate: {int(clock.get_fps())}")
 
 #Setting the window icon.
 	icon = pygame.image.load("icon.png").convert_alpha()
@@ -366,7 +531,8 @@ while True:
 
 
 #Resetting camera surface each frame. No leftovers from last frame allowed!
-	camera.fill((150, 200, 255))
+	camera.fill(sky_color)
+	#camera.fill((0, 0, 0)) 
 
 #Taking all inputs. Quitting the game if the "x" in the corner is pressed.
 	input_short_space = False
@@ -375,6 +541,10 @@ while True:
 	input_short_d = False
 	input_short_enter = False
 	input_release_space = False
+	input_short_1 = False
+	input_short_2 = False
+	input_short_3 = False
+	input_short_4 = False
 	for f in pygame.event.get():
 		if f.type == pygame.QUIT:
 			exit()
@@ -390,8 +560,18 @@ while True:
 			if f.key == pygame.K_d:
 				input_long_d = True
 				input_short_d = True
+			if f.key == pygame.K_1:
+				input_short_1 = True
+			if f.key == pygame.K_2:
+				input_short_2 = True
+			if f.key == pygame.K_3:
+				input_short_3 = True
+			if f.key == pygame.K_4:
+				input_short_4 = True
 			if f.key == pygame.K_RETURN:
 				input_short_enter = True
+
+
 		if f.type == pygame.KEYUP:
 			if f.key == pygame.K_SPACE:
 				input_long_space = False
@@ -412,10 +592,10 @@ while True:
 
 	#This is what happens when the fade has begun.
 		if fade == True:
-			title_cords[1] += 0.1 * (350 - title_cords[1])
-			menu_small_alpha -= 16
+			title_cords[1] += (0.1 * (350 - title_cords[1])) * delta
+			menu_small_alpha -= 16 * delta
 			game_title_small.set_alpha(menu_small_alpha)
-			resolution_opacity -= 16
+			resolution_opacity -= 16 * delta
 		if (350 - title_cords[1]) < 1:
 			fade = False
 			fade2 = True
@@ -427,7 +607,7 @@ while True:
 
 	#If the spacebar is held down, the space_hold variable will add +1 every frame.
 		if input_long_space == True:
-			space_hold += 1
+			space_hold += 1 * delta
 		if input_long_space == False:
 			space_hold = 0
 
@@ -455,10 +635,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_1_cords[1] > 900:
-				resolution_1_cords[1] -= (resolution_1_cords[1] - 900)/5
+				resolution_1_cords[1] -= ((resolution_1_cords[1] - 900)/5) * delta
 		else:
 			if resolution_1_cords[1] < 950:
-				resolution_1_cords[1] += (950 - resolution_1_cords[1])/5
+				resolution_1_cords[1] += ((950 - resolution_1_cords[1])/5) * delta
 
 		if current_resolution == "1080":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -466,10 +646,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_2_cords[1] > 900:
-				resolution_2_cords[1] -= (resolution_2_cords[1] - 900)/5
+				resolution_2_cords[1] -= ((resolution_2_cords[1] - 900)/5) * delta
 		else:
 			if resolution_2_cords[1] < 950:
-				resolution_2_cords[1] += (950 - resolution_2_cords[1])/5
+				resolution_2_cords[1] += ((950 - resolution_2_cords[1])/5) * delta
 
 		if current_resolution == "1440":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -477,10 +657,10 @@ while True:
 			camera.blit(resolution_on_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_3_cords[1] > 900:
-				resolution_3_cords[1] -= (resolution_3_cords[1] - 900)/5
+				resolution_3_cords[1] -= ((resolution_3_cords[1] - 900)/5) * delta
 		else:
 			if resolution_3_cords[1] < 950:
-				resolution_3_cords[1] += (950 - resolution_3_cords[1])/5
+				resolution_3_cords[1] += ((950 - resolution_3_cords[1])/5) * delta
 
 		if current_resolution == "2160":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -488,10 +668,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_on_4_s, resolution_4_cords)
 			if resolution_4_cords[1] > 900:
-				resolution_4_cords[1] -= (resolution_4_cords[1] - 900)/5
+				resolution_4_cords[1] -= ((resolution_4_cords[1] - 900)/5) * delta
 		else:
 			if resolution_4_cords[1] < 950:
-				resolution_4_cords[1] += (950 - resolution_4_cords[1])/5
+				resolution_4_cords[1] += ((950 - resolution_4_cords[1])/5) * delta
 
 		#Taking input and changing current_resolution setting.
 		if input_short_a == True:
@@ -539,7 +719,7 @@ while True:
 
 	#The second phase concists of the game title fading away as the alpha value gets lower.
 		if fade2 == True:
-			menu_alpha -= 12
+			menu_alpha -= 12 * delta
 			game_title.set_alpha(menu_alpha)
 
 
@@ -554,7 +734,7 @@ while True:
 
 	#If the spacebar is held down, the space_hold variable will add +1 every frame.
 		if input_long_space == True:
-			space_hold += 1
+			space_hold += 1 * delta
 		if input_long_space == False:
 			space_hold = 0
 
@@ -586,10 +766,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_1_cords[1] > 900:
-				resolution_1_cords[1] -= (resolution_1_cords[1] - 900)/5
+				resolution_1_cords[1] -= ((resolution_1_cords[1] - 900)/5) * delta
 		else:
 			if resolution_1_cords[1] < 950:
-				resolution_1_cords[1] += (950 - resolution_1_cords[1])/5
+				resolution_1_cords[1] += ((950 - resolution_1_cords[1])/5) * delta
 
 		if current_resolution == "1080":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -597,10 +777,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_2_cords[1] > 900:
-				resolution_2_cords[1] -= (resolution_2_cords[1] - 900)/5
+				resolution_2_cords[1] -= ((resolution_2_cords[1] - 900)/5) * delta
 		else:
 			if resolution_2_cords[1] < 950:
-				resolution_2_cords[1] += (950 - resolution_2_cords[1])/5
+				resolution_2_cords[1] += ((950 - resolution_2_cords[1])/5) * delta
 
 		if current_resolution == "1440":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -608,10 +788,10 @@ while True:
 			camera.blit(resolution_on_3_s, resolution_3_cords)
 			camera.blit(resolution_off_4_s, resolution_4_cords)
 			if resolution_3_cords[1] > 900:
-				resolution_3_cords[1] -= (resolution_3_cords[1] - 900)/5
+				resolution_3_cords[1] -= ((resolution_3_cords[1] - 900)/5) * delta
 		else:
 			if resolution_3_cords[1] < 950:
-				resolution_3_cords[1] += (950 - resolution_3_cords[1])/5
+				resolution_3_cords[1] += ((950 - resolution_3_cords[1])/5) * delta
 
 		if current_resolution == "2160":
 			camera.blit(resolution_off_1_s, resolution_1_cords)
@@ -619,10 +799,10 @@ while True:
 			camera.blit(resolution_off_3_s, resolution_3_cords)
 			camera.blit(resolution_on_4_s, resolution_4_cords)
 			if resolution_4_cords[1] > 900:
-				resolution_4_cords[1] -= (resolution_4_cords[1] - 900)/5
+				resolution_4_cords[1] -= ((resolution_4_cords[1] - 900)/5) * delta
 		else:
 			if resolution_4_cords[1] < 950:
-				resolution_4_cords[1] += (950 - resolution_4_cords[1])/5
+				resolution_4_cords[1] += ((950 - resolution_4_cords[1])/5) * delta
 
 		#Taking input and changing current_resolution setting.
 		if input_short_a == True:
@@ -671,10 +851,10 @@ while True:
 
 	#This is what happens when the fade has begun.
 		if fade == True:
-			title_cords[1] += 0.1 * (350 - title_cords[1])
-			menu_small_alpha -= 16
+			title_cords[1] += (0.1 * (350 - title_cords[1])) * delta
+			menu_small_alpha -= 16 * delta
 			passive_title_small.set_alpha(menu_small_alpha)
-			resolution_opacity -= 16
+			resolution_opacity -= 16 * delta
 		if (350 - title_cords[1]) < 1:
 			fade = False
 			fade2 = True
@@ -691,23 +871,118 @@ while True:
 
 	#The second phase concists of the passive title fading away as the alpha value gets lower.
 		if fade2 == True:
-			menu_alpha -= 12
+			menu_alpha -= 12 * delta
 			passive_title.set_alpha(menu_alpha)
 
 
 	#If the second fade is over the main game will start.
-		if menu_alpha < 0:
+		if menu_alpha < 0: 
 			game_location = "active_game"
 			score = 0
 
 #Active game logic
 	if game_location == "active_game":
 
+
 	#Adding score each frame.
-		score += (0.01 + (santa_running_speed/7000)) * score_boost
+		score += ((0.01 + (santa_running_speed/7000)) * score_boost) * delta
 
 	#Speed of all the moving objects on screen.
-		game_speed = 8 + santa_running_speed/250
+		game_speed = (8 + santa_running_speed/250) * delta
+
+
+	#Sun and moon logic.
+		sunmoon_cords[0] -= 0.35 * delta
+
+		#Changing sunmoon_speed variable based on if direction is "up" or "down"
+		if sunmoon_direction == "up":
+			sunmoon_speed -= 0.0025 * delta
+		if sunmoon_direction == "down":
+			sunmoon_speed += 0.0025 * delta
+
+
+		#Limiting the speed of the sun and the moon
+		if sunmoon_speed > 0.5 * delta:
+			sunmoon_speed = 0.5 * delta
+		if sunmoon_speed < -0.5 * delta:
+			sunmoon_speed = -0.5 * delta
+
+		#Moving the sun/moon vertically based on speed variable
+		sunmoon_cords[1] += sunmoon_speed
+
+
+		#Changing direction when sun/moon has reached a certain position in the sky.
+		if sunmoon_cords[1] < 180:
+			sunmoon_direction = "down"
+		if sunmoon_cords[1] > 750:
+			sunmoon_direction = "up"
+
+		#Changing between sun and moon every time it reaches it's low state.
+		if sunmoon_direction == "up":
+			if not sunmoon_speed == -0.6:
+				if sunmoon_speed > 0:
+					sunmoon_speed = -0.6
+					sunmoon_cords[0] = 1500
+					if sunmoon_mode == "sun":
+						sunmoon_mode = "moon"
+					else:
+						sunmoon_mode = "sun"
+
+		#Blitting the sun/moon. Changing sky color based on sunmoon_mode.
+		if sunmoon_mode == "sun":
+			camera.blit(sun_s, sunmoon_cords)
+			if sky_color[0] < 150:
+				sky_color[0] += 0.565 * delta
+			if sky_color[1] < 200:
+				sky_color[1] += 0.75 * delta
+			if sky_color[2] < 255: 
+				sky_color[2] += 0.96 * delta
+		if sunmoon_mode == "moon":
+			if sky_color[0] > 37:
+				sky_color[0] -= 0.565 * delta
+			if sky_color[1] > 50:
+				sky_color[1] -= 0.75 * delta
+			if sky_color[2] > 63:
+				sky_color[2] -= 0.96 * delta
+			camera.blit(moon_s, sunmoon_cords)
+
+		#Limit sky color so it can't go too high or too low.
+			if sky_color[0] > 150:
+				sky_color[0] = 150
+			if sky_color[1] > 200:
+				sky_color[1] = 200
+			if sky_color[2] > 255:
+				sky_color[2] = 255
+
+			if sky_color[0] < 37:
+				sky_color[0] = 37
+			if sky_color[1] < 50:
+				sky_color[1] = 50
+			if sky_color[2] < 63:
+				sky_color[2] = 63
+
+	#Mountain logic.
+		mountain_cords[0] -= (game_speed/6)
+
+		camera.blit(mountain_s, (mountain_cords[0] - 512*4, mountain_cords[1]))
+
+		camera.blit(mountain_s, (mountain_cords[0] - 512*3, mountain_cords[1]))
+
+		camera.blit(mountain_s, (mountain_cords[0] - 512*2, mountain_cords[1]))
+
+		camera.blit(mountain_s, (mountain_cords[0] - 512, mountain_cords[1]))
+
+		camera.blit(mountain_s, mountain_cords)
+
+		camera.blit(mountain_s, (mountain_cords[0] + 512, mountain_cords[1]))
+
+		camera.blit(mountain_s, (mountain_cords[0] + 512*2, mountain_cords[1]))
+
+		camera.blit(mountain_s, (mountain_cords[0] + 512*3, mountain_cords[1]))
+
+		if mountain_cords[0] < 0:
+			mountain_cords[0] = 512*4
+
 
 	#Cycling through tree list and executing functions within each tree object in the list.
 		for f in tree_list:
@@ -718,7 +993,6 @@ while True:
 
 	#Rect object that tracks if a new tree object should spawn or not.
 		tree_checker = pygame.Rect(1920 + (7 + santa_running_speed/200), 725 - 256, 128, 256) 
-		#tree_checker = pygame.Rect(1920, 725 - 256, 128, 256)
 
 
 	#Blitting trees to camera.
@@ -732,8 +1006,12 @@ while True:
 			f.cords[0] -= game_speed
 			camera.blit(f.image, f.cords)
 
+
 	#Blitting ground surface.
 		camera.blit(ground_s, (0, 725))
+
+	#Blitting ground line.
+		#camera.blit(ground_line_s, (0, 725))
 
 	#Creating new small stones in the ground.
 		thing = random.randint(0, 1)
@@ -751,26 +1029,30 @@ while True:
 
 	#Ground gap object logic.
 		#updating position of gap rect.
-		void_r = pygame.Rect(100, 100, gap_size, 1080)
+		void_r = pygame.Rect(100, 100, 250, 1080)
 		void_r.topleft = (gap_cords[0], 0)
 
-		#Updating position of gap and blitting to screen. 
+	#Hole background logic.
+		void_s.blit(hole_background, (0, 0))
+
+
+	#Updating position of gap and blitting to screen. 
 		void_s = pygame.transform.scale(void_s, gap_resolution)
 		thing = random.randint(0, 150)
 		gap_cords[0] -= game_speed
-		camera.blit(void_s, gap_cords)
+		camera.blit(void_s, gap_cords)		
 
-		#Updating gap resolution and resetting position of "thing" variable is .
-		if gap_cords[0] < 0 - gap_size:
+
+	#Updating gap resolution and resetting position of "thing" variable is .
+		if gap_cords[0] < 0 - 250:
 			if thing == 0:
-				gap_size = (220 + int(santa_running_speed/50))
-				gap_resolution = [gap_size, 1080]
+				gap_resolution = [250, 1080]
 				gap_cords[0] = 1920
 
 
 	#Santa logic.
 		#Increasing santa speed each frame.
-		santa_running_speed += 0.5
+		santa_running_speed += 0.5 * delta
 
 		#Jumping.
 		if input_short_space == True:
@@ -780,14 +1062,14 @@ while True:
 						santa_jump_speed = -40
 
 		#Adding downwards momentum each frame.
-		santa_jump_speed += 2
+		santa_jump_speed += 2 * delta
 
 		#Limiting the vertical speed of santa.
-		if santa_jump_speed > 20:
-			santa_jump_speed = 20
+		if santa_jump_speed > 20 * delta:
+			santa_jump_speed = 20 * delta
 
 		#Moving santa vertically based on his speed.
-		santa_cords[1] += santa_jump_speed
+		santa_cords[1] += santa_jump_speed * delta
 
 
 		#Making sure santa does not move through the floor. 
@@ -798,14 +1080,14 @@ while True:
 					santa_jump_speed = 0
 
 		#If santa is falling down a hole. He can not move inside the ground.
-		if santa_cords[0] + 90 > gap_cords[0] + gap_size:
+		if santa_cords[0] + 90 > gap_cords[0] + 250:
 			if ground_r.colliderect(santa_r):
-				santa_cords[0] = gap_cords[0] + gap_size - 90
+				santa_cords[0] = gap_cords[0] + 250 - 90
 
 		#Falling down holes.
 		if santa_cords[1] > 624:
 			if void_r.contains(santa_r):
-				santa_cords[1] += 4
+				santa_cords[1] += 4 * delta
 
 
 		#Once santa has fallen far enough game is over.
@@ -824,9 +1106,9 @@ while True:
 
 		#Moving horizontally with a and d keys.
 		if input_long_a == True:
-			santa_cords[0] -= 10
+			santa_cords[0] -= 10 * delta
 		if input_long_d == True:
-			santa_cords[0] += 8
+			santa_cords[0] += 8 * delta
 
 		#Limit how far santa can go to the left and right of the screen.
 		if santa_cords[0] < 100:
@@ -840,11 +1122,6 @@ while True:
 			score_boost = 2
 		else:
 			score_boost = 1
-
-		#Changing what frame is displayed according to santa_frame variable.
-		if timer < 1:
-			santa_frame += 1
-
 
 		#Resetting santa_frame variable once the end of the animation has been reached.
 		if santa_frame > 3:
@@ -934,6 +1211,18 @@ while True:
 				obstruction_list.remove(f)
 				thing = "nothing"
 
+	#Blitting darkness during night time when the moon is out.
+		if sunmoon_mode == "moon":
+			if night_s_opacity < 80:
+				night_s_opacity += 0.2
+		if sunmoon_mode == "sun":
+			if night_s_opacity > 0:
+				night_s_opacity -= 0.2
+		night_s.set_alpha(night_s_opacity)
+		camera.blit(night_s, (0, 0))
+
+
+
 	#ACTIVE GAME DEBUG.
 		#Changing state of debug with tab key.
 		if input_short_tab == True:
@@ -960,9 +1249,10 @@ while True:
 	pygame.display.flip()
 
 #Counting down timer variables and resetting it when it hits 0.
-	timer -= 1
+	timer -= 1 * delta
 	if timer < 0:
 		timer = 16-(santa_running_speed/400) 
+		santa_frame += 1
 
 
 
